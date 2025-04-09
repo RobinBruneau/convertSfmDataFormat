@@ -3,7 +3,7 @@ import os
 import shutil
 
 from utils.meshroom_utils import read_meshroom_project, write_cameras_sfm
-from utils.nerf_utils import write_nerf_data
+from utils.nerf_utils import write_nerf_data, write_neuralangelo_data, write_neus2_data
 
 def parse_args():
     parser = argparse.ArgumentParser(description="Converts a Meshroom project or .sfm file to a Instant-ngp or NeuS2 .json file.")

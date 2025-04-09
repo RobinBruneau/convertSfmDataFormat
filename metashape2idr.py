@@ -31,7 +31,7 @@ if __name__ == "__main__":
         shutil.rmtree(OUTPUT_PATH)
 
     # Read meshroom project
-    views_data, intrinsics_data, poses_data, all_rest_data = read_meshroom_project(MESHROOM_PROJECT_PATH, cameras_sfm_path=CAMERAS_SFM_PATH, masks_folder=MASK_FOLDER)
+    views_data, intrinsics_data, poses_data, all_rest_data = read_metashape_project(MESHROOM_PROJECT_PATH, cameras_sfm_path=CAMERAS_SFM_PATH, masks_folder=MASK_FOLDER)
 
     # Output images and camera parameters in the IDR format
     write_idr_data(views_data, intrinsics_data, poses_data, OUTPUT_PATH, bit_depth=BIT_DEPTH)

@@ -154,7 +154,7 @@ def write_cameras_sfm(cameras_sfm_path, views_data, intrinsics_data, poses_data,
         if all_rest_data[3] is not None:
             cameras_sfm['structure'] = all_rest_data[3]
     else:
-        cameras_sfm['version'] = ['1','2','8']
+        cameras_sfm['version'] = ['1','2','1']
         cameras_sfm['views'] = []
         cameras_sfm['intrinsics'] = []
         cameras_sfm['poses'] = []

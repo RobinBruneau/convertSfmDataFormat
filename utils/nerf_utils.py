@@ -12,7 +12,133 @@ def write_nerf_data(views_data, intrinsics_data, poses_data, output_path, bit_de
     Write NeRF .json file.
     Inspired by
     """
-    return 0
+
+def write_instantngp_data(views_data, intrinsics_data, poses_data, output_path, bit_depth=16, copy_images=True, downscale_factor=None):
+    """
+    Write Instant-ngp .json file.
+    Inspired by
+    """
+
+    # Create output directory
+    images_dir = "image_masked"
+    output_images_path = os.path.join(output_path, images_dir)
+    if not os.path.exists(output_images_path):
+        os.makedirs(output_images_path)
+
+    if len(intrinsics_data) == 1:
+        intrinsic_data = intrinsics_data[list(intrinsics_data.keys())[0]]
+
+        width = int(intrinsic_data["width"])
+        height = int(intrinsic_data["height"])
+        fx, fy = np.array(intrinsic_data["pxFocalLength"]).astype(float)
+        cx, cy = np.array(intrinsic_data["principalPoint"]).astype(float)
+        ppx, ppy = cx + width/2, cy + height/2
+
+        camera_angle_x = math.atan(width / (fx * 2)) * 2
+        camera_angle_y = math.atan(height / (fy * 2)) * 2
+        fovx = camera_angle_x * 180 / math.pi
+        fovy = camera_angle_y * 180 / math.pi
+
+        out = {
+            "scale": 0.5,
+            "camera_angle_x": camera_angle_x,
+            "camera_angle_y": camera_angle_y,
+            "fl_x": fx,
+            "fl_y": fy,
+            "k1": 0.0,
+            "k2": 0.0,
+            "k3": 0.0,
+            "k4": 0.0,
+            "p1": 0.0,
+            "p2": 0.0,
+            "is_fisheye": False,
+            "cx": ppx,
+            "cy": ppy,
+            "w": width,
+            "h": height,
+            "aabb_scale": 1.0,
+            "frames": [],
+        }
+    else:
+        out = {
+            "frames": [],
+            "aabb_scale": 1.0
+        }
+
+    # Iterate over the views
+    for i, (view_id, view_data) in enumerate(views_data.items()):
+
+        # Load image
+        image_path = view_data["path"]
+        undisto_image_path = view_data.get("undistortedImagePath", None)
+        if undisto_image_path is not None:
+            image_path = undisto_image_path    
+        image_name = os.path.basename(image_path)
+
+        if copy_images:
+            image = load_image(image_path)
+            os.makedirs(output_images_path, exist_ok=True)
+            mask_path = view_data.get("maskPath", None)
+            if mask_path is not None:
+                mask = (load_image(mask_path)[:,:,0] > 0.5).astype(np.float32)
+            else:
+                mask = np.ones((image.shape[0], image.shape[1]), dtype=np.float32)
+
+            if image.shape[-1] == 3:
+                image = np.concatenate([image, mask[...,np.newaxis]], axis=-1)
+            elif image.shape[-1] == 4:
+                image[:,:,-1] = (image[:,:,-1] > 0.5).astype(np.float32) * mask
+
+            if downscale_factor is not None:
+                image = cv2.resize(image, (image.shape[1]//downscale_factor, image.shape[0]//downscale_factor))
+
+            save_image(image, os.path.join(output_images_path, image_name), bit_depth=bit_depth)
+        else:
+            images_dir = os.path.relpath(os.path.dirname(image_path), output_path)
+        
+        # Get view parameters
+        K, c2w_gl, _ = get_view_parameters(view_data, intrinsics_data, poses_data)
+        c2w_cv = _gl_to_cv(c2w_gl)
+        c2w_cv[0:3,[1,2]] *= -1
+
+        # Downscale intrinsics
+        if downscale_factor is not None:
+            K[0, 0] /= downscale_factor
+            K[1, 1] /= downscale_factor
+            K[0, 2] /= downscale_factor
+            K[1, 2] /= downscale_factor
+
+        # Add frame to output
+        frame = {}
+        frame["file_path"] = os.path.join(images_dir, image_name)
+        frame["transform_matrix"] = c2w_cv.tolist()
+        out["frames"].append(frame)
+
+    # Get width and height
+    w, h = float(view_data["width"]), float(view_data["height"])
+    if downscale_factor is not None:
+        w = w // downscale_factor
+        h = h // downscale_factor
+    out.update({
+        "w": int(w),
+        "h": int(h),
+    })
+
+    pose_data = poses_data[list(poses_data.keys())[0]]
+    if "scaleBol" in pose_data["pose"]["scale"]:
+        if pose_data["pose"]["scale"]["scaleBol"] == True:
+            scale_mat = np.array(pose_data["pose"]["scale"]["scaleMat"], dtype=np.float32).reshape([3,4])
+            scale_mat = np.concatenate([scale_mat, np.array([[0,0,0,1]], dtype=np.float32)], axis=0)
+            out.update({
+                'n2w': scale_mat.tolist()
+            })
+
+    # Write data to json file
+    file_path = os.path.join(output_path, 'transforms.json')
+    with open(file_path, "w", encoding="utf-8") as outputfile:
+        json.dump(out, outputfile, indent=4)
+    print('Writing data to json file: ', file_path)
+
 
 def write_neus2_data(views_data, intrinsics_data, poses_data, output_path, bit_depth=16, copy_images=True, downscale_factor=None):
     """
@@ -54,7 +180,10 @@ def write_neus2_data(views_data, intrinsics_data, poses_data, output_path, bit_d
             os.makedirs(output_images_path, exist_ok=True)
             mask_path = view_data.get("maskPath", None)
             if mask_path is not None:
-                mask = (load_image(mask_path)[:,:,0] > 0.5).astype(np.float32)
+                mask = load_image(mask_path)
+                if mask.ndim == 3:
+                    mask = mask[:,:,0]
+                mask = (mask > 0.5).astype(np.float32)
             else:
                 mask = np.ones((image.shape[0], image.shape[1]), dtype=np.float32)
 

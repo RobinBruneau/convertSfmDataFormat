@@ -11,7 +11,7 @@ def parse_args():
     parser.add_argument("--cameras_sfm", default=None, help="input path of the cameras.sfm file")
     parser.add_argument("--mask_folder", default=None, help="mask folder")
     parser.add_argument("--output_path", default=None, help="output path")
-    parser.add_argument("--bit_depth", default=16, type=int, help="bit depth of the images")
+    parser.add_argument("--bit_depth", default=8, type=int, help="bit depth of the images")
     args = parser.parse_args()
     return args
 

@@ -33,10 +33,11 @@ def load_image_opencv(path):
     image = np.float32(image) / (2**bit_depth - 1)
 
     # Handle alpha channel if present
-    if image.shape[-1] == 4:
-        image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
-    else:
-        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+    if image.ndim == 3:
+        if image.shape[-1] == 4:
+            image = cv2.cvtColor(image, cv2.COLOR_BGRA2RGBA)
+        else:
+            image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
 
     return image
 
@@ -68,7 +69,9 @@ def load_image_exr(path):
 def load_image(path):
 
     # If .png, .jpg, or .jpeg, load with OpenCV
-    if path.endswith((".png", ".jpg", ".jpeg")):
+    if path.endswith((".png")):
+        return load_image_opencv(path)
+    elif path.endswith((".jpg", ".jpeg")):
         return load_image_opencv(path)
     elif path.endswith(".exr"):
         return load_image_exr(path)
@@ -84,9 +87,12 @@ def save_image(image, path, bit_depth=8):
         image = image.astype(np.uint16)
 
     # Handle alpha channel if present
-    if image.shape[-1] == 4:
+    if image.shape[-1] == 3:
+        image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
+    elif image.shape[-1] == 4:
         image = cv2.cvtColor(image, cv2.COLOR_RGBA2BGRA)
     else:
+        image = image[...,:3]
         image = cv2.cvtColor(image, cv2.COLOR_RGB2BGR)
 
     # Save image
