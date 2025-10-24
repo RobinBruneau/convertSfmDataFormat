@@ -27,9 +27,7 @@ if __name__ == "__main__":
         OUTPUT_PATH = os.path.join(os.path.dirname(MESHROOM_PROJECT_PATH), "idr")
     BIT_DEPTH = args.bit_depth
         
-    # Remove and create output folders
-    if os.path.exists(OUTPUT_PATH):
-        shutil.rmtree(OUTPUT_PATH)
+    os.makedirs(OUTPUT_PATH,exist_ok=True)
 
     # Read meshroom project
     if MESHROOM_PROJECT_PATH is not None:
